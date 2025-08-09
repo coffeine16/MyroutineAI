@@ -84,47 +84,29 @@ const App = () => {
     initializeUserData(user.uid);
   };
 
-const initializeUserData = async (userId) => {
+  const initializeUserData = async (userId) => {
     // Create a reference to this user's specific 'tasks' collection
     const tasksCollectionRef = collection(db, 'users', userId, 'tasks');
     const querySnapshot = await getDocs(tasksCollectionRef);
 
     if (querySnapshot.empty) {
       // --- NEW USER ---
-      // If the user has no tasks, create the default schedule for them
-      console.log("New user detected, creating default schedule in database...");
-      const dayOfWeek = new Date().getDay();
-      const scheduleTemplate = (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5)
-        ? scheduleTemplates.mwf
-        : scheduleTemplates.tth;
-      
-      const newTasks = scheduleTemplate.map((task, index) => ({
-        id: `task-${index}`, // Use a stable ID
-        ...task,
-        completed: false
-      }));
-
-      // Use a "batch write" to save all the new tasks to the database at once
-      const batch = writeBatch(db);
-      newTasks.forEach(task => {
-        const taskRef = doc(db, 'users', userId, 'tasks', task.id);
-        batch.set(taskRef, task);
-      });
-      await batch.commit();
-      
-      setTasks(newTasks);
-      setSavedNormalTasks(newTasks);
+      // If the user has no tasks in the database, start them with an empty list.
+      console.log("New user detected. Starting with a blank schedule.");
+      setTasks([]);
+      setSavedNormalTasks([]); // Also initialize the saved tasks as empty
 
     } else {
       // --- RETURNING USER ---
-      // If they have tasks, load them from the database
+      // If they have tasks, load them from the database as before.
       console.log("Returning user, loading tasks from database...");
       const dbTasks = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       setTasks(dbTasks);
       setSavedNormalTasks(dbTasks);
     }
 
-    setStreak(Math.floor(Math.random() * 15) + 1); // This can remain as is for now
+    // You can adjust this or set it to 0 for new users if you like
+    setStreak(Math.floor(Math.random() * 15) + 1); 
   };
 
   const handleExamModeToggle = (isExamMode) => {
