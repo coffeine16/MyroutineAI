@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Target, 
   Bell, 
@@ -193,14 +193,23 @@ const App = () => {
   }, [undoStack]);
 
   // Search and filter functionality
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          task.time.includes(searchTerm);
-    
-    if (filter === 'completed') return matchesSearch && task.completed;
-    if (filter === 'pending') return matchesSearch && !task.completed;
-    return matchesSearch;
-  }).sort((a, b) => a.time.localeCompare(b.time));
+  const filteredTasks = useMemo(() => {
+    return tasks
+      .filter(task => {
+        const matchesSearch = task.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              (task.time && task.time.includes(searchTerm));
+
+        if (filter === 'completed') return matchesSearch && task.completed;
+        if (filter === 'pending') return matchesSearch && !task.completed;
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        if (a.time && b.time) {
+          return a.time.localeCompare(b.time);
+        }
+        return 0; // Keep original order if time is missing
+      });
+  }, [tasks, searchTerm, filter]);
 
   // Bulk operations
   const toggleBulkMode = useCallback(() => {
