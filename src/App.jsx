@@ -58,55 +58,57 @@ const App = () => {
   const undoTimeoutRef = useRef(null);
 
   useEffect(() => {
-    // 1. Check for a saved user in localStorage when the app loads
-    const savedUser = localStorage.getItem('dailyGrindUser');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      setUser(user);
-      initializeUserData(user.uid);
+    // This single listener handles all auth states:
+    // 1. App loads with a user already logged in.
+    // 2. A new user logs in.
+    // 3. The user logs out.
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // If a user is found (either from a new login or a saved session),
+        // save them to localStorage and initialize their data.
+        localStorage.setItem('dailyGrindUser', JSON.stringify(user));
+        setUser(user);
+        initializeUserData(user.uid);
+      } else {
+        // If no user is found (user logged out),
+        // clear localStorage and the user state.
+        localStorage.removeItem('dailyGrindUser');
+        setUser(null);
+      }
+      // Set loading to false after we've determined the auth state.
       setLoading(false);
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
+  }, []); // The empty array ensures this effect runs only once on mount
+
+  const initializeUserData = async (userId) => {
+    const tasksCollectionRef = collection(db, 'users', userId, 'tasks');
+    const querySnapshot = await getDocs(tasksCollectionRef);
+
+    if (querySnapshot.empty) {
+      console.log("New user detected. Starting with a blank schedule.");
+      setTasks([]);
+      setSavedNormalTasks([]);
     } else {
-      // 2. If no saved user, listen for new auth changes (like a new login)
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        if (user) {
-          // This part is no longer needed here because onAuthSuccess handles it
-        }
-        setLoading(false);
-      });
-      return () => unsubscribe();
+      console.log("Returning user, loading tasks from database...");
+      const dbTasks = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      
+      // This is the key fix for your refresh problem:
+      // Ensure both state variables are updated when loading a returning user.
+      setTasks(dbTasks);
+      setSavedNormalTasks(dbTasks);
     }
-  }, []);
+
+    setStreak(Math.floor(Math.random() * 15) + 1); 
+  };
 
   // NEW function to handle successful authentication
   const handleAuthSuccess = (user) => {
     localStorage.setItem('dailyGrindUser', JSON.stringify(user)); // Save user to localStorage
     setUser(user);
     initializeUserData(user.uid);
-  };
-
-  const initializeUserData = async (userId) => {
-    // Create a reference to this user's specific 'tasks' collection
-    const tasksCollectionRef = collection(db, 'users', userId, 'tasks');
-    const querySnapshot = await getDocs(tasksCollectionRef);
-
-    if (querySnapshot.empty) {
-      // --- NEW USER ---
-      // If the user has no tasks in the database, start them with an empty list.
-      console.log("New user detected. Starting with a blank schedule.");
-      setTasks([]);
-      setSavedNormalTasks([]); // Also initialize the saved tasks as empty
-
-    } else {
-      // --- RETURNING USER ---
-      // If they have tasks, load them from the database as before.
-      console.log("Returning user, loading tasks from database...");
-      const dbTasks = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setTasks(dbTasks);
-      setSavedNormalTasks(dbTasks);
-    }
-
-    // You can adjust this or set it to 0 for new users if you like
-    setStreak(Math.floor(Math.random() * 15) + 1); 
   };
 
   const handleExamModeToggle = async (isExamMode) => {
