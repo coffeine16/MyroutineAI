@@ -318,7 +318,10 @@ const handleTaskToggle = async (taskId, completed) => {
     setEditingTask(null);
   }, []);
 
-  const handleAddTask = useCallback(() => {
+  const handleAddTask = async () => {
+    // Determine which collection to use based on the current mode
+    const collectionName = examMode ? 'examTasks' : 'tasks';
+
     const newTask = {
       id: `task-${Date.now()}`,
       task: 'New Task',
@@ -330,10 +333,18 @@ const handleTaskToggle = async (taskId, completed) => {
       completed: false
     };
     
+    // Update the UI immediately for a fast experience
     setTasks(prev => [...prev, newTask]);
-    setEditingTask(newTask);
-    setShowEditModal(true);
-  }, []);
+
+    // Save the new task to the correct Firestore collection
+    try {
+      const taskRef = doc(db, 'users', user.uid, collectionName, newTask.id);
+      await setDoc(taskRef, newTask);
+      console.log(`Manually added task saved to ${collectionName}`);
+    } catch (error) {
+      console.error(`Error saving manual task to ${collectionName}: `, error);
+    }
+  };
 
   const handleSignOut = async () => {
     await auth.signOut();
