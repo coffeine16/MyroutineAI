@@ -16,7 +16,7 @@ import AiTaskInput from './components/ai/AiTaskInput.jsx';
 import { runAiTaskParser } from './lib/grok.js';
 import { auth } from './lib/firebase.js';
 import { db } from './lib/firebase.js';
-import { collection, doc, getDocs, writeBatch, updateDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, writeBatch, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { scheduleTemplates } from './data/scheduleTemplates.js';
 import AuthForm from './components/auth/AuthForm.jsx';
 import TaskItem from './components/tasks/TaskItem.jsx';
@@ -109,23 +109,40 @@ const App = () => {
     setStreak(Math.floor(Math.random() * 15) + 1); 
   };
 
-  const handleExamModeToggle = (isExamMode) => {
+  const handleExamModeToggle = async (isExamMode) => {
     setExamMode(isExamMode);
-
+  
     if (isExamMode) {
-      // Turning ON Exam Mode
-      setSavedNormalTasks(tasks); // Save your current list of tasks
+      // --- TURNING EXAM MODE ON ---
+      // 1. Save the current normal tasks to a temporary state
+      setSavedNormalTasks(tasks);
+      setTasks([]); // Show a blank/loading state immediately
 
-      // Create the new exam schedule from the template
-      const examSchedule = scheduleTemplates.exam.map((task, index) => ({
-        id: `exam-task-${index}`,
-        ...task,
-        completed: false, // Reset completion status for the exam day
-      }));
-      setTasks(examSchedule);
+      // 2. Check Firestore for a saved exam schedule for this user
+      const examTasksCollectionRef = collection(db, 'users', user.uid, 'examTasks');
+      const querySnapshot = await getDocs(examTasksCollectionRef);
+
+      if (querySnapshot.empty) {
+        // First time in exam mode: give a blank slate
+        console.log("First time in Exam Mode. Starting with a blank schedule.");
+        setTasks([]); 
+      } else {
+        // Returning to exam mode: load the saved schedule
+        console.log("Loading saved exam schedule from database...");
+        const dbTasks = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setTasks(dbTasks);
+      }
     } else {
-      // Turning OFF Exam Mode
-      setTasks(savedNormalTasks); // Restore your normal task list
+      // --- TURNING EXAM MODE OFF ---
+      // Restore the normal task list from the temporary state
+      const batch = writeBatch(db);
+      tasks.forEach(task => {
+        const taskRef = doc(db, 'users', user.uid, 'examTasks', task.id);
+        batch.set(taskRef, task);
+      });
+      await batch.commit();
+      console.log("Exam tasks saved to database.");
+      setTasks(savedNormalTasks);
     }
   };
   // Undo functionality
@@ -266,30 +283,30 @@ const App = () => {
     setSelectedTasks(new Set());
   }, [tasks, selectedTasks, addToUndoStack, showUndoNotification]);
 
-const handleTaskToggle = async (taskId, completed) => {
+  const handleTaskToggle = async (taskId, completed) => {
+    // This line makes the function "mode-aware"
+    const collectionName = examMode ? 'examTasks' : 'tasks';
+
     // 1. Optimistically update the UI for a snappy user experience
     setTasks(prevTasks => prevTasks.map(task => 
       task.id === taskId ? { ...task, completed } : task
     ));
 
-    // 2. Save the change to the Firestore database in the background
+    // 2. Save the change to the correct Firestore collection
     try {
-      // Create a reference to the specific task document in the database
-      // It's located at: users -> {the_user's_id} -> tasks -> {the_task's_id}
-      const taskRef = doc(db, 'users', user.uid, 'tasks', taskId);
+      const taskRef = doc(db, 'users', user.uid, collectionName, taskId);
       
-      // Update the 'completed' field in that document
       await updateDoc(taskRef, {
         completed: completed
       });
 
     } catch (error) {
-      console.error("Error updating task in database: ", error);
-      // Optional: Revert the UI change if the database update fails
+      console.error(`Error updating task in ${collectionName}: `, error);
+      // Revert the UI change if the database update fails
       setTasks(prevTasks => prevTasks.map(task => 
         task.id === taskId ? { ...task, completed: !completed } : task
       ));
-      // Optional: Show an error message to the user
+      alert("Failed to update task. Please check your connection.");
     }
   };
 
@@ -298,33 +315,50 @@ const handleTaskToggle = async (taskId, completed) => {
     setShowEditModal(true);
   }, []);
 
-  const handleTaskDelete = useCallback((taskId) => {
-    const taskToDelete = tasks.find(t => t.id === taskId);
-    const updatedTasks = tasks.filter(t => t.id !== taskId);
-    
-    setTasks(updatedTasks);
-    addToUndoStack({
-      type: 'delete',
-      deletedTask: taskToDelete
-    });
-    showUndoNotification('Task deleted');
-  }, [tasks, addToUndoStack, showUndoNotification]);
-
-  const handleSaveTask = useCallback((updatedTask) => {
-    setTasks(prev => prev.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    ));
-    setShowEditModal(false);
-    setEditingTask(null);
-  }, []);
-
-  const handleAddTask = async () => {
-    // Determine which collection to use based on the current mode
+  const handleTaskDelete = async (taskId) => {
     const collectionName = examMode ? 'examTasks' : 'tasks';
 
+    // Remove the task from the local state immediately for a fast UI response
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+
+    // Delete the task from the Firestore database in the background
+    try {
+      const taskRef = doc(db, 'users', user.uid, collectionName, taskId);
+      await deleteDoc(taskRef);
+    } catch (error) {
+      console.error(`Error deleting task from ${collectionName}: `, error);
+      // Optional: add logic here to restore the task to the UI if the delete fails
+    }
+  };
+
+  const handleSaveTask = async (updatedTask) => {
+    const collectionName = examMode ? 'examTasks' : 'tasks';
+    const taskExists = tasks.some(task => task.id === updatedTask.id);
+
+    // Save to the database first
+    try {
+      const taskRef = doc(db, 'users', user.uid, collectionName, updatedTask.id);
+      await setDoc(taskRef, updatedTask, { merge: true });
+    } catch (error) {
+      console.error(`Error saving task to ${collectionName}: `, error);
+      return; // Stop if the database save fails
+    }
+
+    // Then, update the local state to match
+    if (taskExists) {
+      setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    } else {
+      setTasks(prev => [...prev, updatedTask]);
+    }
+    
+    setShowEditModal(false);
+    setEditingTask(null);
+  };
+
+  const handleAddTask = () => {
     const newTask = {
       id: `task-${Date.now()}`,
-      task: 'New Task',
+      task: '', 
       time: '12:00',
       icon: '📝',
       category: 'personal',
@@ -333,18 +367,10 @@ const handleTaskToggle = async (taskId, completed) => {
       completed: false
     };
     
-    // Update the UI immediately for a fast experience
-    setTasks(prev => [...prev, newTask]);
-
-    // Save the new task to the correct Firestore collection
-    try {
-      const taskRef = doc(db, 'users', user.uid, collectionName, newTask.id);
-      await setDoc(taskRef, newTask);
-      console.log(`Manually added task saved to ${collectionName}`);
-    } catch (error) {
-      console.error(`Error saving manual task to ${collectionName}: `, error);
-    }
+    setEditingTask(newTask);
+    setShowEditModal(true);
   };
+
 
   const handleSignOut = async () => {
     await auth.signOut();
