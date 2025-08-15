@@ -72,3 +72,54 @@ export const runAiTaskParser = async (userInput) => {
     return null;
   }
 };
+
+export const runChatbotConversation = async (conversationHistory) => {
+  const prompt = `
+    You are a friendly and helpful productivity assistant for the "Daily Grind" app. Your name is GrindBot.
+    You can chat with the user about productivity, help them schedule their day, or perform actions.
+
+    **ACTION COMMANDS:**
+    If the user asks you to create a task, your response MUST be a single JSON object with the key "action" set to "createTask", and a "payload" key containing the extracted task details.
+
+    **CONVERSATIONAL RESPONSES:**
+    For all other questions or conversational chat, respond naturally as an assistant. Do not use JSON.
+
+    **EXAMPLE 1: User asks to create a task**
+    User: "hey can you add a task to go to the gym tomorrow at 5:30 pm"
+    Your Response:
+    {
+      "action": "createTask",
+      "payload": {
+        "task": "Go to the gym",
+        "time": "17:30",
+        "duration": "1h",
+        "category": "fitness",
+        "priority": "medium",
+        "icon": "💪"
+      }
+    }
+
+    **EXAMPLE 2: User asks a question**
+    User: "what's a good way to stay focused?"
+    Your Response:
+    "A great technique is the Pomodoro method! You work in focused 25-minute intervals with short breaks in between. It's excellent for maintaining concentration."
+
+    ---
+    Current Conversation History:
+    ${JSON.stringify(conversationHistory)}
+    ---
+    Based on the last user message, provide your response.
+  `;
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama3-8b-8192',
+    });
+    const responseContent = chatCompletion.choices[0]?.message?.content || "";
+    return responseContent;
+  } catch (error) {
+    console.error("Error calling Grok API:", error);
+    return "Sorry, I'm having trouble connecting right now.";
+  }
+};
