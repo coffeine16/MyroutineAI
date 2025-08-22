@@ -1,11 +1,5 @@
-import Groq from 'groq-sdk';
-
 const apiKey = import.meta.env.VITE_GROK_API_KEY;
-
-const groq = new Groq({
-  apiKey: apiKey,
-  dangerouslyAllowBrowser: true, 
-});
+const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 export const runAiTaskParser = async (userInput) => {
   const prompt = `
@@ -44,21 +38,33 @@ export const runAiTaskParser = async (userInput) => {
     ---
   `;
 
+  const requestBody = {
+    messages: [{ role: 'user', content: prompt }],
+    model: 'llama3-8b-8192',
+    response_format: { type: "json_object" },
+  };
+
   try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      // --- CHANGE THIS LINE ---
-      model: 'llama3-8b-8192', // Use a current, supported model
-      // ----------------------
-      response_format: { type: "json_object" },
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
     });
 
-    const responseContent = chatCompletion.choices[0]?.message?.content || "";
-    console.log("Raw AI Response:", responseContent);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message);
+    }
+
+    const data = await response.json();
+    const responseContent = data.choices[0]?.message?.content || "";
+    console.log("Raw AI Response (Task Parser):", responseContent);
 
     const firstBracket = responseContent.indexOf('{');
     const lastBracket = responseContent.lastIndexOf('}');
-
     if (firstBracket !== -1 && lastBracket !== -1) {
       const jsonString = responseContent.substring(firstBracket, lastBracket + 1);
       return JSON.parse(jsonString);
@@ -68,10 +74,11 @@ export const runAiTaskParser = async (userInput) => {
     }
 
   } catch (error) {
-    console.error("Error processing AI response:", error);
+    console.error("Error calling Groq API:", error);
     return null;
   }
 };
+
 
 export const runChatbotConversation = async (conversationHistory) => {
   const prompt = `
@@ -105,21 +112,39 @@ export const runChatbotConversation = async (conversationHistory) => {
     "A great technique is the Pomodoro method! You work in focused 25-minute intervals with short breaks in between. It's excellent for maintaining concentration."
 
     ---
-    Current Conversation History:
+    Current Conversation History (for context, only respond to the last user message):
     ${JSON.stringify(conversationHistory)}
     ---
     Based on the last user message, provide your response.
   `;
 
+  const requestBody = {
+    messages: [{ role: 'user', content: prompt }],
+    model: 'llama3-8b-8192',
+  };
+
   try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama3-8b-8192',
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
     });
-    const responseContent = chatCompletion.choices[0]?.message?.content || "";
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error.message);
+    }
+    
+    const data = await response.json();
+    const responseContent = data.choices[0]?.message?.content || "";
+    console.log("Raw AI Response (Chatbot):", responseContent);
     return responseContent;
+
   } catch (error) {
-    console.error("Error calling Grok API:", error);
-    return "Sorry, I'm having trouble connecting right now.";
+    console.error("Error calling Groq API:", error);
+    return "Sorry, I'm having trouble connecting to my brain right now. Please try again in a moment.";
   }
 };

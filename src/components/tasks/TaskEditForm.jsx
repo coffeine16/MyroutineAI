@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Modal from '../ui/Modal';
 
 const TaskEditForm = ({ task, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -20,7 +19,7 @@ const TaskEditForm = ({ task, onSave, onCancel }) => {
   const icons = ['📝', '💻', '📚', '🏫', '💪', '🛒', '🚿', '😴', '☀️', '🌙', '🎯', '⚡'];
 
   return (
-    <Modal isOpen={true} onClose={onCancel}>
+    <>
       <h3 className="text-lg font-bold mb-4 text-white">Edit Task</h3>
       <div className="space-y-4">
         <div>
@@ -66,7 +65,7 @@ const TaskEditForm = ({ task, onSave, onCancel }) => {
         <button onClick={onCancel} className="px-5 py-2.5 bg-zinc-700/50 hover:bg-zinc-600/50 rounded-xl text-sm font-medium transition-colors border border-zinc-600/50">Cancel</button>
         <button onClick={handleSave} className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-xl text-sm font-medium text-white transition-all shadow-lg shadow-emerald-900/50">Save Changes</button>
       </div>
-    </Modal>
+    </>
   );
 };
 export default TaskEditForm;

@@ -3,7 +3,7 @@ import { Target, Bell, LogOut, RefreshCw, Flame, Plus, Trophy, Zap, BarChart3, M
 import AiTaskInput from './components/ai/AiTaskInput.jsx';
 import { runAiTaskParser, runChatbotConversation } from './lib/grok.js';
 import { auth, db } from './lib/firebase.js';
-import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import AuthForm from './components/auth/AuthForm.jsx';
 import TaskItem from './components/tasks/TaskItem.jsx';
 import TaskEditForm from './components/tasks/TaskEditForm.jsx';
@@ -13,6 +13,10 @@ import SearchBar from './components/ui/SearchBar.jsx';
 import Modal from './components/ui/Modal.jsx';
 import GoalTracker from './components/goals/GoalTracker.jsx';
 import Chatbot from './components/ai/Chatbot.jsx';
+import { requestNotificationPermission, showNotification } from './lib/notifications.js';
+import AnalyticsDashboard from './components/ui/AnalyticsDashboard.jsx';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -38,6 +42,29 @@ const App = () => {
   ]);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      const fiveMinutesFromNow = new Date(new Date().getTime() + 5 * 60000);
+      const notificationTime = fiveMinutesFromNow.toLocaleTimeString('en-US', {
+        hour12: false, hour: '2-digit', minute: '2-digit',
+      });
+      const dueTasks = tasks.filter(task => !task.completed && task.time === notificationTime);
+      dueTasks.forEach(task => {
+        showNotification(`Time for: ${task.task}`, {
+          body: `Your schedule says it's time to start "${task.task}".`,
+          icon: '/favicon.ico'
+        });
+      });
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         localStorage.setItem('dailyGrindUser', JSON.stringify(user));
@@ -51,6 +78,32 @@ const App = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setTasks((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleNotificationToggle = async () => {
+    if (!notificationsEnabled) {
+      const permission = await requestNotificationPermission();
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        showNotification("Notifications Enabled!", {
+          body: "You'll now receive updates from Daily Grind."
+        });
+      }
+    } else {
+      setNotificationsEnabled(false);
+    }
+  };
 
   const handleToggleBulkMode = () => {
     if (bulkMode) {
@@ -151,6 +204,14 @@ const App = () => {
 
   const handleTaskToggle = async (taskId, completed) => {
     setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, completed } : t)));
+    if (completed) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        showNotification("Task Completed! 🎉", {
+          body: `You've finished: ${task.task}`
+        });
+      }
+    }
     try {
       await updateDoc(doc(db, 'users', user.uid, 'tasks', taskId), { completed });
     } catch (error) {
@@ -172,7 +233,7 @@ const App = () => {
     setEditingTask(task);
     setShowEditModal(true);
   };
-  
+
   const handleSaveTask = async (updatedTask) => {
     const taskExists = tasks.some(t => t.id === updatedTask.id);
     try {
@@ -189,7 +250,7 @@ const App = () => {
     setShowEditModal(false);
     setEditingTask(null);
   };
-  
+
   const handleTaskSelect = (taskId) => {
     const newSelection = new Set(selectedTasks);
     if (newSelection.has(taskId)) {
@@ -218,7 +279,7 @@ const App = () => {
   const handleSignOut = async () => {
     await auth.signOut();
   };
-  
+
   const handleBulkComplete = async () => {
     if (selectedTasks.size === 0) return;
     const batch = writeBatch(db);
@@ -303,7 +364,7 @@ const App = () => {
         <div className="flex items-center space-x-3">
           <button onClick={() => setShowAnalytics(true)} className="p-2 rounded-xl bg-zinc-800/50 border border-zinc-600/50 text-zinc-400 hover:text-white transition-all hover:scale-105" title="Analytics"><BarChart3 size={18} /></button>
           <button onClick={() => setShowGoalTracker(true)} className="p-2 rounded-xl bg-zinc-800/50 border border-zinc-600/50 text-zinc-400 hover:text-white transition-all hover:scale-105" title="Track Goals"><Target size={18} /></button>
-          <button onClick={() => setNotificationsEnabled(!notificationsEnabled)} className={`p-2 rounded-xl border transition-all hover:scale-105 ${notificationsEnabled ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-zinc-800/50 border-zinc-600/50 text-zinc-400 hover:text-white'}`} title="Toggle Notifications"><Bell size={18} /></button>
+          <button onClick={handleNotificationToggle} className={`p-2 rounded-xl border transition-all hover:scale-105 ${notificationsEnabled ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-zinc-800/50 border-zinc-600/50 text-zinc-400 hover:text-white'}`} title="Toggle Notifications"><Bell size={18} /></button>
           <button onClick={handleSignOut} className="p-2 rounded-xl bg-zinc-800/50 border border-zinc-600/50 text-zinc-400 hover:text-red-400 transition-all hover:scale-105" title="Sign Out"><LogOut size={18} /></button>
         </div>
       </div>
@@ -378,16 +439,30 @@ const App = () => {
                 {!searchTerm && (<button onClick={handleAddTask} className="mt-6 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-semibold transition-all shadow-lg shadow-emerald-900/50 hover:scale-105">Create Your First Task</button>)}
               </div>
             ) : (
-              <div className="space-y-3 max-w-4xl mx-auto">
-                {filteredTasks.map(task => (<TaskItem key={task.id} task={task} onToggle={handleTaskToggle} onEdit={handleTaskEdit} onDelete={handleTaskDelete} isSelected={selectedTasks.has(task.id)} onSelect={handleTaskSelect} bulkMode={bulkMode} dragHandleProps={{}} />))}
-              </div>
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={filteredTasks.map(task => task.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3 max-w-4xl mx-auto">
+                    {filteredTasks.map(task => (<TaskItem key={task.id} task={task} onToggle={handleTaskToggle} onEdit={handleTaskEdit} onDelete={handleTaskDelete} isSelected={selectedTasks.has(task.id)} onSelect={handleTaskSelect} bulkMode={bulkMode} dragHandleProps={{}} />))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </div>
       </div>
       <GoalTracker isOpen={showGoalTracker} onClose={() => setShowGoalTracker(false)} goals={goals} setGoals={setGoals} user={user} />
-      {showEditModal && <TaskEditForm task={editingTask} onSave={handleSaveTask} onCancel={() => setShowEditModal(false)} />}
-      {showAnalytics && <AnalyticsDashboard tasks={tasks} onClose={() => setShowAnalytics(false)} />}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
+        {editingTask && <TaskEditForm task={editingTask} onSave={handleSaveTask} onCancel={() => setShowEditModal(false)} />}
+      </Modal>
+      <Modal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)}>
+        <AnalyticsDashboard tasks={tasks} onClose={() => setShowAnalytics(false)} />
+      </Modal>
       <button onClick={() => setShowChatbot(true)} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 p-4 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-full shadow-2xl shadow-emerald-900/50 transform hover:scale-110 transition-transform" title="Open AI Assistant">
         <MessageSquarePlus size={24} />
       </button>

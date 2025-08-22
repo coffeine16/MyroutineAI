@@ -1,7 +1,6 @@
 import React from 'react';
 import { BarChart3, X, TrendingUp, Trophy } from 'lucide-react';
 import ProgressBar from './ProgressBar';
-import Modal from './Modal';
 
 const AnalyticsDashboard = ({ tasks, onClose }) => {
   const completedTasks = tasks.filter(task => task.completed).length;
@@ -9,7 +8,7 @@ const AnalyticsDashboard = ({ tasks, onClose }) => {
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
   return (
-    <Modal isOpen={true} onClose={onClose}>
+    <>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold text-white flex items-center"><BarChart3 className="mr-2 text-emerald-400" />Analytics</h3>
         <button onClick={onClose} className="text-zinc-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-zinc-700/50"><X size={20} /></button>
@@ -60,7 +59,7 @@ const AnalyticsDashboard = ({ tasks, onClose }) => {
           </div>
         </div>
       </div>
-    </Modal>
+    </>
   );
 };
 export default AnalyticsDashboard;

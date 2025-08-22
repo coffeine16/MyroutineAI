@@ -1,8 +1,22 @@
 import React, { useState } from 'react';
 import { Clock, GripVertical, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const TaskItem = ({ task, onToggle, onEdit, onDelete, isSelected, onSelect, bulkMode, dragHandleProps }) => {
   const [justCompleted, setJustCompleted] = useState(false);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const handleCheckboxChange = (e) => {
     e.stopPropagation();
@@ -34,13 +48,29 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, isSelected, onSelect, bulk
   };
 
   return (
-    <div className={`w-full group relative overflow-hidden transition-all duration-300 cursor-pointer rounded-2xl border backdrop-blur-sm ${task.completed ? 'opacity-60 scale-[0.98]' : ''} ${isSelected ? 'from-emerald-500/20 to-emerald-600/20 border-emerald-500/50 shadow-lg shadow-emerald-500/25' : `bg-gradient-to-br ${getCategoryGradient(task.category)}`} ${justCompleted ? 'animate-pulse from-emerald-600/40 to-emerald-500/40 border-emerald-400/50' : ''}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={handleItemClick}
+      className={`w-full group relative overflow-hidden transition-all duration-300 cursor-pointer rounded-2xl border backdrop-blur-sm ${task.completed ? 'opacity-60 scale-[0.98]' : ''} ${isSelected ? 'from-emerald-500/20 to-emerald-600/20 border-emerald-500/50 shadow-lg shadow-emerald-500/25' : `bg-gradient-to-br ${getCategoryGradient(task.category)}`} ${justCompleted ? 'animate-pulse from-emerald-600/40 to-emerald-500/40 border-emerald-400/50' : ''}`}
+    >
       <div className="flex items-center p-4 w-full">
-        {!bulkMode && (<div {...dragHandleProps} className="flex-shrink-0 mr-3 cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-300 transition-colors"><GripVertical size={16} /></div>)}
-        {bulkMode && (<div className="flex-shrink-0 mr-3" onClick={(e) => e.stopPropagation()}>{isSelected ? (<CheckSquare size={20} className="text-emerald-400" />) : (<Square size={20} className="text-zinc-400 hover:text-zinc-300 transition-colors" />)}</div>)}
+
+        {!bulkMode && (<div {...listeners} className="flex-shrink-0 mr-3 cursor-grab active:cursor-grabbing text-zinc-400 hover:text-zinc-300 transition-colors"><GripVertical size={16} /></div>)}
+      
+        {bulkMode && (
+          <div 
+            className="flex-shrink-0 mr-3" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(task.id);
+            }}
+          >
+            {isSelected ? (<CheckSquare size={20} className="text-emerald-400" />) : (<Square size={20} className="text-zinc-400 hover:text-zinc-300 transition-colors" />)}
+          </div>
+        )}
+
         <div className="flex-shrink-0 text-2xl mr-4 transition-transform duration-200 group-hover:scale-110">{task.icon}</div>
-        
-        {/* THIS DIV IS THE FIX */}
         <div className="flex-grow min-w-0">
           <div className="flex items-center justify-between mb-1">
             <p className={`font-semibold transition-all duration-200 truncate ${task.completed ? 'line-through text-zinc-400' : 'text-white'}`}>{task.task}</p>
@@ -52,7 +82,6 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, isSelected, onSelect, bulk
             {task.duration && (<span className="ml-3 text-zinc-500 bg-zinc-800/50 px-2 py-0.5 rounded-full text-xs">~{task.duration}</span>)}
           </div>
         </div>
-        
         <div className="flex items-center space-x-2 ml-auto" onClick={(e) => e.stopPropagation()}>
           {!bulkMode && (<button onClick={() => onDelete(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all p-2 rounded-lg hover:bg-red-500/10"><Trash2 size={16} /></button>)}
           <div className="relative">
