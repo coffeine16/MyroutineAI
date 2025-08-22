@@ -15,7 +15,11 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://myroutine-ai.vercel.app"  # Add your Vercel URL here
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
