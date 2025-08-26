@@ -5,6 +5,8 @@ import { runAiTaskParser, runChatbotConversation } from './lib/grok.js';
 import { auth, db } from './lib/firebase.js';
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import AuthForm from './components/auth/AuthForm.jsx';
+import { initGoogleCalendarClient, requestAccessToken, createCalendarEvent } from "./lib/calendar.js";
+
 import TaskItem from './components/tasks/TaskItem.jsx';
 import TaskEditForm from './components/tasks/TaskEditForm.jsx';
 import BulkActions from './components/tasks/BulkActions.jsx';
@@ -70,6 +72,7 @@ const App = () => {
         localStorage.setItem('dailyGrindUser', JSON.stringify(user));
         setUser(user);
         initializeUserData(user.uid);
+        initGoogleCalendarClient();
       } else {
         localStorage.removeItem('dailyGrindUser');
         setUser(null);
@@ -133,10 +136,17 @@ const App = () => {
           setTasks(prev => [...prev, newTask]);
           await setDoc(doc(db, 'users', user.uid, 'tasks', newTask.id), newTask);
           assistantResponse = `Okay, I've added "${newTask.task}" to your schedule for you.`;
+
+          // Push to Google Calendar
+          try {
+            await createCalendarEvent(newTask);
+          } catch (err) {
+            console.error("Failed to sync AI-created task to Calendar:", err);
+          }
         }
       }
     } catch (e) {
-      console.error("Could not parse AI action from response:", e);
+      console.error("Could not parse AI action:", e);
     }
     setMessages(prev => [...prev, { role: 'assistant', content: assistantResponse }]);
     setAiLoading(false);
@@ -166,6 +176,7 @@ const App = () => {
     localStorage.setItem('dailyGrindUser', JSON.stringify(user));
     setUser(user);
     initializeUserData(user.uid);
+    initGoogleCalendarClient();
   };
 
   const handleAiTaskCreate = async (prompt) => {
@@ -186,6 +197,7 @@ const App = () => {
     try {
       const taskRef = doc(db, 'users', user.uid, 'tasks', newTask.id);
       await setDoc(taskRef, newTask);
+      await createCalendarEvent(newTask);
     } catch (error) {
       console.error("Error saving AI task:", error);
     }
@@ -236,17 +248,34 @@ const App = () => {
 
   const handleSaveTask = async (updatedTask) => {
     const taskExists = tasks.some(t => t.id === updatedTask.id);
+
     try {
-      await setDoc(doc(db, 'users', user.uid, 'tasks', updatedTask.id), updatedTask, { merge: true });
+      // Save to Firestore
+      await setDoc(
+        doc(db, 'users', user.uid, 'tasks', updatedTask.id),
+        updatedTask,
+        { merge: true }
+      );
+
+      // ✅ Push to Google Calendar
+      try {
+        await createCalendarEvent(updatedTask);
+      } catch (err) {
+        console.error("Failed to sync with Google Calendar:", err);
+      }
+
     } catch (error) {
       console.error("Error saving task:", error);
       return;
     }
+
+    // Update local state
     if (taskExists) {
       setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)));
     } else {
       setTasks(prev => [...prev, updatedTask]);
     }
+
     setShowEditModal(false);
     setEditingTask(null);
   };
@@ -456,6 +485,12 @@ const App = () => {
           </div>
         </div>
       </div>
+      <button
+        onClick={requestAccessToken}
+        className="fixed bottom-24 right-6 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg"
+      >
+        Connect Google Calendar
+      </button>
       <GoalTracker isOpen={showGoalTracker} onClose={() => setShowGoalTracker(false)} goals={goals} setGoals={setGoals} user={user} />
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
         {editingTask && <TaskEditForm task={editingTask} onSave={handleSaveTask} onCancel={() => setShowEditModal(false)} />}

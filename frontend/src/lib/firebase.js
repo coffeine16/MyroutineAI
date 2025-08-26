@@ -31,6 +31,8 @@ const analytics = getAnalytics(app);
 // Initialize and export Firebase Authentication for use in other files
 export const auth = getAuth(app);
 
+
 // Initialize and export the Google Auth Provider for the sign-in button
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope("https://www.googleapis.com/auth/calendar.events");
 export const db = getFirestore(app);

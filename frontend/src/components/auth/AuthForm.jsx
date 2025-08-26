@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { auth, googleProvider } from '../../lib/firebase.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
 
 const AuthForm = ({ onAuthSuccess }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -41,6 +42,9 @@ const AuthForm = ({ onAuthSuccess }) => {
     setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential.accessToken;
+      localStorage.setItem("googleAccessToken", token);
       onAuthSuccess(result.user);
     } catch (err) {
       setError(err.message.replace('Firebase: ', ''));
