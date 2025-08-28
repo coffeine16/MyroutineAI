@@ -34,6 +34,8 @@ const App = () => {
   const [showGoalTracker, setShowGoalTracker] = useState(false);
   const [goals, setGoals] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiTaskLoading, setAiTaskLoading] = useState(false);
+  const [showAiTaskInput, setShowAiTaskInput] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [bulkMode, setBulkMode] = useState(false);
@@ -699,11 +701,6 @@ const App = () => {
           </div>
         </div>
 
-        {/* AI Task Input */}
-        <div className="mb-6">
-          <AiTaskInput onTaskCreate={handleAiTaskCreate} loading={aiLoading} />
-        </div>
-
         {/* Enhanced action buttons */}
         <div className="grid grid-cols-2 gap-3">
           <button 
@@ -1097,51 +1094,70 @@ const App = () => {
       </Modal>
 
       {/* Floating Actions */}
-{/* Floating Controls (Calendar + Chatbot) */}
+      {/* Floating Controls (Calendar + Chatbot) */}
+      {/* Floating Controls */}
       <div className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 flex flex-col items-end space-y-4 z-30">
-        
-        {/* Calendar Toggle Button */}
-        <button
-          onClick={() => setShowCalendar((prev) => !prev)}
-          className="relative p-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-full shadow-2xl shadow-blue-900/40 transform hover:scale-110 transition-all duration-300 group"
-          title={showCalendar ? "Hide Calendar" : "Show Calendar"}
-        >
-          <Calendar size={26} className="group-hover:scale-110 transition-transform" />
-          <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-30"></div>
-        </button>
+      
+      {/* Calendar Toggle Button */}
+      <button
+        onClick={() => setShowCalendar((prev) => !prev)}
+        className="relative p-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-full shadow-2xl shadow-blue-900/40 transform hover:scale-110 transition-all duration-300 group"
+        title={showCalendar ? "Hide Calendar" : "Show Calendar"}
+      >
+        <Calendar size={26} className="group-hover:scale-110 transition-transform" />
+        <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-30"></div>
+      </button>
+      
+      {/* Google Calendar Card (collapsible) */}
+      {showCalendar && (
+        <div className="bg-gradient-to-br from-white/95 to-gray-100/95 dark:from-zinc-900/95 dark:to-zinc-800/95 backdrop-blur-xl border border-gray-200/50 dark:border-zinc-700/50 shadow-2xl rounded-3xl p-6 w-80 transform animate-slide-up">
+          <h3 className="text-lg font-bold flex items-center gap-3 mb-3">
+            <div className="p-2 bg-blue-500/10 rounded-xl">
+              <Calendar className="w-5 h-5 text-blue-600" />
+            </div>
+            Google Calendar
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+            Seamlessly sync your tasks with Google Calendar for ultimate productivity.
+          </p>
+          <button
+            onClick={requestAccessToken}
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            Connect Calendar
+          </button>
+        </div>
+      )}
+      
+      {/* AI Task Creator Button */}
+      <button
+        onClick={() => setShowAiTaskInput((prev) => !prev)}
+        className="relative p-5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-full shadow-2xl shadow-amber-900/40 transform hover:scale-110 transition-all duration-300 group"
+        title={showAiTaskInput ? "Hide AI Task Creator" : "Show AI Task Creator"}
+      >
+        <Sparkles size={26} className="group-hover:scale-110 transition-transform" />
+        <div className="absolute inset-0 rounded-full bg-amber-500 animate-ping opacity-30"></div>
+      </button>
 
-        {/* Google Calendar Card (collapsible) */}
-        {showCalendar && (
-          <div className="bg-gradient-to-br from-white/95 to-gray-100/95 dark:from-zinc-900/95 dark:to-zinc-800/95 backdrop-blur-xl border border-gray-200/50 dark:border-zinc-700/50 shadow-2xl rounded-3xl p-6 w-80 transform animate-slide-up">
-            <h3 className="text-lg font-bold flex items-center gap-3 mb-3">
-              <div className="p-2 bg-blue-500/10 rounded-xl">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              Google Calendar
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-              Seamlessly sync your tasks with Google Calendar for ultimate productivity.
-            </p>
-            <button 
-              onClick={requestAccessToken}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              Connect Calendar
-            </button>
-          </div>
-        )}
-
-        {/* Chatbot Button */}
-        <button
-          onClick={() => setShowChatbot(true)}
-          className="relative p-5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-full shadow-2xl shadow-emerald-900/50 transform hover:scale-110 transition-all duration-300 group"
-          title="Open AI Assistant"
-        >
-          <MessageSquarePlus size={26} className="group-hover:scale-110 transition-transform" />
-          <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-30"></div>
-        </button>
+      {/* AI Task Creator Card (collapsible) */}
+      {showAiTaskInput && (
+        <AiTaskInput
+          onTaskCreate={handleAiTaskCreate}
+          loading={aiTaskLoading}
+          onClose={() => setShowAiTaskInput(false)}
+        />
+      )}
+      
+      {/* Chatbot Button */}
+      <button
+        onClick={() => setShowChatbot(true)}
+        className="relative p-5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-full shadow-2xl shadow-emerald-900/50 transform hover:scale-110 transition-all duration-300 group"
+        title="Open AI Assistant"
+      >
+        <MessageSquarePlus size={26} className="group-hover:scale-110 transition-transform" />
+        <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-30"></div>
+      </button>
       </div>
-
 
       {/* Chatbot */}
       <Chatbot 
