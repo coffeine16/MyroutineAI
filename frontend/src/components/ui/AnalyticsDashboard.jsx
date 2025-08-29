@@ -86,7 +86,7 @@ const AnalyticsDashboard = ({ tasks = [], onClose }) => {
   const streak = 4; // This would come from your app's streak logic
 
   return (
-    <div className="space-y-6">
+    <div className="w-full h-full space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center">

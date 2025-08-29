@@ -1,13 +1,15 @@
-// lib/calendar.js
 /* global google */
 
 // ===== Constants =====
-const TIME_ZONE = "Asia/Kolkata"; // change if you want another TZ
+const TIME_ZONE = "Asia/Kolkata"; // your preferred TZ
+const OFFSET_MINUTES = 330; // +05:30 for IST
 
 let client;
 
 // ----- OAuth init -----
 export function initGoogleCalendarClient(callback) {
+  if (client) return; // prevent multiple inits
+
   client = google.accounts.oauth2.initTokenClient({
     client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     scope: "https://www.googleapis.com/auth/calendar.events",
@@ -22,11 +24,22 @@ export function initGoogleCalendarClient(callback) {
   });
 }
 
-export function requestAccessToken() {
+export function requestAccessToken(callback) {
   if (!client) {
-    console.error("Google client not initialized");
+    console.warn("Google client not initialized — running init...");
+    initGoogleCalendarClient(callback);
     return;
   }
+
+  client.callback = (response) => {
+    if (response && response.access_token) {
+      localStorage.setItem("googleAccessToken", response.access_token);
+      if (callback) callback(response.access_token);
+    } else {
+      console.error("Failed to get Google access token:", response);
+    }
+  };
+
   client.requestAccessToken();
 }
 
@@ -38,46 +51,82 @@ function getAccessToken() {
 
 // ----- Helpers -----
 function ensureDate(task) {
-  // default to "today" (in user local) if task.date is missing
   return task.date ?? new Date().toISOString().split("T")[0];
+}
+
+function parseDuration(durationStr) {
+  if (!durationStr) return 30 * 60 * 1000; // default 30 min
+
+  const match = durationStr.match(/(\d+)\s*(min|hour|h)/i);
+  if (!match) return 30 * 60 * 1000;
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+
+  if (unit.startsWith("h")) return value * 60 * 60 * 1000;
+  return value * 60 * 1000;
 }
 
 function buildDateRange(task) {
   const taskDate = ensureDate(task);
-  const time = task.time ?? "09:00"; // default time if none
 
-  const start = new Date(`${taskDate}T${time}`);
-  if (Number.isNaN(start.getTime())) {
-    throw new RangeError("Invalid task date/time");
-  }
-  const end = new Date(start.getTime() + 30 * 60 * 1000); // +30 min
+  const defaultTime = new Date();
+  const currentHHMM = `${String(defaultTime.getHours()).padStart(2, "0")}:${String(
+    defaultTime.getMinutes()
+  ).padStart(2, "0")}`;
+
+  const time = task.time && task.time.trim() !== "" ? task.time : currentHHMM;
+
+  const [h, m] = time.split(":").map(Number);
+  const date = new Date(taskDate);
+  date.setHours(h, m, 0, 0);
+
+  const start = date;
+  const durationMs = parseDuration(task.duration);
+  const end = new Date(start.getTime() + durationMs);
+
   return { start, end };
 }
 
-// Format as local RFC3339 string WITHOUT "Z"
-function formatLocalRFC3339(date) {
+/**
+ * Convert a JS Date to RFC3339 string in IST (+05:30)
+ */
+function formatRFC3339IST(date) {
+  const istDate = new Date(date.getTime());
+
   const pad = (n) => String(n).padStart(2, "0");
-  return (
-    date.getFullYear() +
-    "-" + pad(date.getMonth() + 1) +
-    "-" + pad(date.getDate()) +
-    "T" + pad(date.getHours()) +
-    ":" + pad(date.getMinutes()) +
-    ":" + pad(date.getSeconds())
-  );
+
+  const yyyy = istDate.getFullYear();
+  const mm = pad(istDate.getMonth() + 1);
+  const dd = pad(istDate.getDate());
+  const hh = pad(istDate.getHours());
+  const min = pad(istDate.getMinutes());
+  const ss = pad(istDate.getSeconds());
+
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}+05:30`;
 }
 
 function buildEventPayload(task) {
-  const { start, end } = buildDateRange(task);
+  let start, end;
+
+  if (task.start && task.end) {
+    // ✅ Respect existing ISO strings
+    start = new Date(task.start);
+    end = new Date(task.end);
+  } else {
+    // ❌ Fallback to parsing date/time/duration
+    ({ start, end } = buildDateRange(task));
+  }
+
   const payload = {
     summary: task.task,
     description: "Task from Daily Grind",
     start: {
-      dateTime: formatLocalRFC3339(start),
+      dateTime: formatRFC3339IST(start),
       timeZone: TIME_ZONE,
     },
     end: {
-      dateTime: formatLocalRFC3339(end),
+      dateTime: formatRFC3339IST(end),
       timeZone: TIME_ZONE,
     },
     reminders: {
@@ -89,16 +138,11 @@ function buildEventPayload(task) {
     },
   };
 
-  // Debug logs (helpful while testing)
-  if (!task.date) {
-    console.warn("No date provided, defaulting to today:", ensureDate(task));
-  }
   console.log("Event payload:", JSON.stringify(payload, null, 2));
   return payload;
 }
 
 // ----- Calendar Operations -----
-// Create new Google Calendar event, return event.id
 export async function createCalendarEvent(task) {
   const token = getAccessToken();
   if (!token) return null;
@@ -118,14 +162,15 @@ export async function createCalendarEvent(task) {
   );
 
   const data = await res.json();
-  console.log("Event created:", data);
   if (!res.ok) {
+    console.error("createCalendarEvent error:", data);
     throw new Error(data?.error?.message || "Failed to create event");
   }
-  return data.id ?? null;
+
+  console.log("Event created:", data);
+  return data.id; // ✅ Always return eventId
 }
 
-// Update existing event (by id). Returns event.id.
 export async function updateCalendarEvent(eventId, task) {
   const token = getAccessToken();
   if (!token) return null;
@@ -146,19 +191,20 @@ export async function updateCalendarEvent(eventId, task) {
   );
 
   const data = await res.json();
-  console.log("Event updated:", data);
   if (!res.ok) {
+    console.error("updateCalendarEvent error:", data);
     throw new Error(data?.error?.message || "Failed to update event");
   }
-  return data.id ?? null;
+
+  console.log("Event updated:", data);
+  return data.id; // ✅ Always return eventId
 }
 
-// If task has googleEventId -> update, else create. Returns final eventId.
 export async function upsertCalendarEvent(task) {
   try {
     if (task.googleEventId) {
       const id = await updateCalendarEvent(task.googleEventId, task);
-      return id || task.googleEventId;
+      return id || task.googleEventId; // fallback if null
     } else {
       const id = await createCalendarEvent(task);
       return id;
@@ -169,7 +215,6 @@ export async function upsertCalendarEvent(task) {
   }
 }
 
-// Delete event by id (no error if missing)
 export async function deleteCalendarEvent(eventId) {
   const token = getAccessToken();
   if (!token) return;
