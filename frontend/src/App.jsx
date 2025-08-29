@@ -280,15 +280,26 @@ const App = () => {
   }, []);
 
   // Save or update a task in Firestore + Google Calendar
+// Save or update a task + sync with Google Calendar
+// Save (create or update) a task in Firestore + Google Calendar
   const saveTaskWithCalendar = async (rawTask) => {
     try {
-      const googleEventId = await upsertCalendarEvent(rawTask);
-      const taskToSave = { ...rawTask, googleEventId };
+      console.log("DEBUG saveTaskWithCalendar rawTask:", rawTask);
 
-      // Firestore
-      const taskRef = doc(db, 'users', user.uid, 'tasks', taskToSave.id);
+      // Always create/update event
+      const googleEventId = await upsertCalendarEvent(rawTask);
+
+      // Attach googleEventId only if it exists
+      const taskToSave = {
+        ...rawTask,
+        ...(googleEventId ? { googleEventId } : {})  // 🔑 omit if undefined
+      };
+
+      // Persist in Firestore
+      const taskRef = doc(db, "users", user.uid, "tasks", taskToSave.id);
       await setDoc(taskRef, taskToSave, { merge: true });
 
+      console.log("Task saved with GoogleEventId:", googleEventId);
       return taskToSave;
     } catch (err) {
       console.error("saveTaskWithCalendar failed:", err);
@@ -296,16 +307,74 @@ const App = () => {
     }
   };
 
-  // Delete a task from Firestore + Google Calendar
-  const deleteTaskWithCalendar = async (task) => {
+
+  const handleSaveTask = async (rawTask) => {
+    // ⚡ Optimistic UI update with a placeholder
+    setTasks(prev => {
+      const exists = prev.some(t => t.id === rawTask.id);
+      const tempTask = { ...rawTask, syncing: true }; // 🚩 googleEventId will come after sync
+      return exists
+        ? prev.map(t => (t.id === rawTask.id ? tempTask : t))
+        : [...prev, tempTask];
+    });
+
     try {
-      if (task.googleEventId) {
-        await deleteCalendarEvent(task.googleEventId);
-      }
-      await deleteDoc(doc(db, 'users', user.uid, 'tasks', task.id));
+      // ✅ Save to Firestore + Google Calendar (returns task with googleEventId)
+      const savedTask = await saveTaskWithCalendar(rawTask);
+
+      // 🔄 Replace the temporary version with the fully synced task
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === savedTask.id ? { ...savedTask, syncing: false } : t
+        )
+      );
+
     } catch (err) {
-      console.error("deleteTaskWithCalendar failed:", err);
-      throw err;
+      console.error("handleSaveTask failed:", err);
+      alert("Couldn't save/sync this task.");
+
+      // ❌ Roll back optimistic update if save fails
+      setTasks(prev => prev.filter(t => t.id !== rawTask.id));
+    } finally {
+      setShowEditModal(false);
+      setEditingTask(null);
+    }
+  };
+
+  // ---- calendar delete helper ----
+  const deleteTaskWithCalendar = async (taskId) => {
+    try {
+      const taskToDelete = tasks.find((t) => t.id === taskId);
+      if (!taskToDelete) {
+        console.warn("Task not found for deletion:", taskId);
+        return;
+      }
+
+      // delete from Google Calendar if event exists
+      if (taskToDelete.googleEventId) {
+        await deleteCalendarEvent(taskToDelete.googleEventId);
+      } else {
+        console.warn("⚠️ No googleEventId on task:", taskToDelete);
+      }
+
+      // delete from Firestore
+      await deleteDoc(doc(db, "users", user.uid, "tasks", taskId));
+      console.log("✅ Deleted task:", taskId);
+
+      // update local state
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch (err) {
+      console.error("❌ deleteTaskWithCalendar failed:", err);
+    }
+  };
+
+
+  // ---- UI handler ----
+  const handleTaskDelete = async (taskId) => {
+    try {
+      await deleteTaskWithCalendar(taskId);
+    } catch (err) {
+      console.error("Error deleting task:", err);
     }
   };
 
@@ -522,52 +591,9 @@ const App = () => {
     }
   };
 
-  const handleTaskDelete = async (taskId) => {
-    const taskToDelete = tasks.find(t => t.id === taskId);
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-
-    try {
-      await Promise.all([
-        deleteDoc(doc(db, 'users', user.uid, 'tasks', taskId)),
-        taskToDelete?.googleEventId
-          ? deleteCalendarEvent(taskToDelete.googleEventId).catch(err => {
-              console.error("Failed to delete from Google Calendar:", err);
-            })
-          : Promise.resolve()
-      ]);
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      alert("Couldn't delete task properly.");
-    }
-  };
-
   const handleTaskEdit = (task) => {
     setEditingTask(task);
     setShowEditModal(true);
-  };
-
-  const handleSaveTask = async (updatedTask) => {
-    // ⚡ Optimistic UI update
-    setTasks(prev => {
-      const exists = prev.some(t => t.id === updatedTask.id);
-      return exists
-        ? prev.map(t => (t.id === updatedTask.id ? updatedTask : t))
-        : [...prev, updatedTask];
-    });
-
-    try {
-      // ✅ Sync in background
-      const savedTask = await saveTaskWithCalendar(updatedTask);
-
-      // Replace with synced version
-      setTasks(prev => prev.map(t => t.id === savedTask.id ? savedTask : t));
-
-    } catch (err) {
-      alert("Couldn't save/sync this task.");
-    } finally {
-      setShowEditModal(false);
-      setEditingTask(null);
-    }
   };
 
   const handleTaskSelect = (taskId) => {
@@ -1055,7 +1081,7 @@ const App = () => {
                         task={task} 
                         onToggle={handleTaskToggle} 
                         onEdit={handleTaskEdit} 
-                        onDelete={handleTaskDelete} 
+                        onDelete={() => handleTaskDelete(task.id)}
                         isSelected={selectedTasks.has(task.id)} 
                         onSelect={handleTaskSelect} 
                         bulkMode={bulkMode} 
@@ -1086,7 +1112,8 @@ const App = () => {
           />
         )}
       </Modal>
-      <Modal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)}>
+      
+      <Modal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} size="analytics">
         <AnalyticsDashboard 
           tasks={tasks} 
           onClose={() => setShowAnalytics(false)} 

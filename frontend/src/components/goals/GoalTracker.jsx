@@ -223,7 +223,7 @@ const GoalTracker = ({ isOpen, onClose, goals = [], setGoals, user }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="large">
+    <Modal isOpen={isOpen} onClose={onClose} size="analytics">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -318,7 +318,7 @@ const GoalTracker = ({ isOpen, onClose, goals = [], setGoals, user }) => {
         </div>
 
         {/* Goals List */}
-        <div className="space-y-4 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent">
+        <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1 scrollbar-hide">
           {goals.length > 0 ? (
             goals.map(goal => (
               <GoalItem 
