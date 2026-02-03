@@ -120,7 +120,7 @@ function buildEventPayload(task) {
 
   const payload = {
     summary: task.task,
-    description: "Task from Daily Grind",
+    description: "Task from MyRoutineAI",
     start: {
       dateTime: formatRFC3339IST(start),
       timeZone: TIME_ZONE,

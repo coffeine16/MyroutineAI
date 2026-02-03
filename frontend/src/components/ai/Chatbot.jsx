@@ -84,7 +84,7 @@ const Chatbot = ({ isOpen, onClose, messages, onSendMessage, loading }) => {
               </div>
               <div>
                 <h3 className="text-xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-300 bg-clip-text text-transparent">
-                  GrindBot Assistant
+                  Your Daily Assistant
                 </h3>
                 <p className="text-zinc-400 text-sm">Your productivity companion</p>
               </div>

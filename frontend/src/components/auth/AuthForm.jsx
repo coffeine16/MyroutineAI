@@ -71,7 +71,7 @@ const AuthForm = ({ onAuthSuccess }) => {
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-blue-500 blur-2xl opacity-30 rounded-full"></div>
               <div className="relative bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-transparent bg-clip-text">
                 <Target className="w-16 h-16 xl:w-20 xl:h-20 mx-auto mb-4 text-emerald-400 animate-pulse" />
-                <h1 className="text-4xl xl:text-6xl font-bold mb-2">Daily Grind</h1>
+                <h1 className="text-4xl xl:text-6xl font-bold mb-2">MyRoutineAI</h1>
               </div>
             </div>
             
@@ -128,15 +128,12 @@ const AuthForm = ({ onAuthSuccess }) => {
                   <div className="relative">
                     <Target className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-emerald-400" />
                     <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 text-transparent bg-clip-text mb-2">
-                      Daily Grind
+                      Daily Tasks
                     </h1>
                   </div>
                 </div>
 
                 <div className="text-center mb-6 sm:mb-8">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                    {isLoginMode ? 'Welcome Back!' : 'Join the Grind'}
-                  </h2>
                   <p className="text-sm sm:text-base text-zinc-400">
                     {isLoginMode ? 'Continue your productivity journey' : 'Start your productivity transformation'}
                   </p>
@@ -245,7 +242,7 @@ const AuthForm = ({ onAuthSuccess }) => {
                       <>
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-200"></div>
                         <span className="relative z-10 text-sm sm:text-base">
-                          {isLoginMode ? 'Sign In to Grind' : 'Start Your Journey'}
+                          {isLoginMode ? 'Sign In' : 'Start Your Journey'}
                         </span>
                       </>
                     )}
@@ -255,7 +252,7 @@ const AuthForm = ({ onAuthSuccess }) => {
                 {/* Switch Mode */}
                 <div className="text-center mt-6 sm:mt-8">
                   <p className="text-zinc-400 text-sm sm:text-base">
-                    <span>{isLoginMode ? "New to Daily Grind?" : "Already grinding?"}</span>
+                    <span>{isLoginMode ? "New to MyRoutineAI?" : "Already a user?"}</span>
                     <button 
                       type="button" 
                       onClick={() => setIsLoginMode(!isLoginMode)} 
@@ -266,13 +263,6 @@ const AuthForm = ({ onAuthSuccess }) => {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Bottom text for mobile */}
-            <div className="lg:hidden text-center mt-6 sm:mt-8 px-4">
-              <p className="text-zinc-400 text-xs sm:text-sm">
-                Join thousands of users achieving their goals with Daily Grind
-              </p>
             </div>
           </div>
         </div>

@@ -47,7 +47,7 @@ const App = () => {
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hello! I'm GrindBot. How can I help you be more productive today?" }
+    { role: 'assistant', content: "Hello! How can I help you be more productive today?" }
   ]);
 
   // Animated background particles
@@ -288,12 +288,12 @@ const App = () => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        localStorage.setItem('dailyGrindUser', JSON.stringify(user));
+        localStorage.setItem('dailyUser', JSON.stringify(user));
         setUser(user);
         initializeUserData(user.uid);
         initGoogleCalendarClient();
       } else {
-        localStorage.removeItem('dailyGrindUser');
+        localStorage.removeItem('dailyUser');
         setUser(null);
       }
       setLoading(false);
@@ -423,7 +423,7 @@ const saveTaskWithCalendar = async (rawTask) => {
       if (permission === 'granted') {
         setNotificationsEnabled(true);
         showNotification("Notifications Enabled!", {
-          body: "You'll now receive updates from Daily Grind."
+          body: "You'll now receive updates from MyRoutineAI."
         });
       }
     } else {
@@ -538,7 +538,7 @@ const saveTaskWithCalendar = async (rawTask) => {
   };
 
   const handleAuthSuccess = (user) => {
-    localStorage.setItem('dailyGrindUser', JSON.stringify(user));
+    localStorage.setItem('dailyUser', JSON.stringify(user));
     setUser(user);
     initializeUserData(user.uid);
     initGoogleCalendarClient();
@@ -758,7 +758,7 @@ const saveTaskWithCalendar = async (rawTask) => {
             onClick={() => setSidebarOpen(false)}
             className="text-3xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-300 bg-clip-text text-transparent animate-gradient hover:scale-105 transition-all duration-300 cursor-pointer"
           >
-            Daily Grind
+            MyRoutineAI
           </button>
           <div className="flex items-center text-amber-400 bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20" title="Daily Streak">
             <Flame size={20} className="animate-pulse mr-2" />
@@ -878,7 +878,7 @@ const saveTaskWithCalendar = async (rawTask) => {
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-zinc-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-500 border-t-transparent mx-auto mb-6 shadow-2xl shadow-emerald-500/25"></div>
-          <p className="text-zinc-400 animate-pulse text-lg font-medium">Loading your grind...</p>
+          <p className="text-zinc-400 animate-pulse text-lg font-medium">Loading your day...</p>
         </div>
       </div>
     );
@@ -957,7 +957,7 @@ const saveTaskWithCalendar = async (rawTask) => {
               <Menu size={20} />
             </button>
             <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">
-              Daily Grind
+              MyRoutineAI
             </h1>
           </div>
           
@@ -1211,14 +1211,11 @@ const saveTaskWithCalendar = async (rawTask) => {
 
             {/* Tasks Grid - mobile spacing */}
             {filteredTasks.length === 0 ? (
-              <div className="text-center text-zinc-400 py-12 lg:py-20 flex flex-col items-center justify-center h-full px-4">
+              <div className="text-center text-zinc-400 py-25 lg:py-20 flex flex-col items-center justify-center h-full px-4">
                 <div className="relative mb-6 lg:mb-8">
                   <div className="text-6xl lg:text-8xl animate-gentle-bounce">🎯</div>
                   <div className="absolute -top-1 lg:-top-2 -right-1 lg:-right-2 w-5 h-5 lg:w-6 lg:h-6 bg-emerald-500 rounded-full animate-pulse"></div>
                 </div>
-                <h3 className="text-xl lg:text-2xl font-bold mb-2 lg:mb-3 text-zinc-300 bg-gradient-to-r from-zinc-300 to-zinc-400 bg-clip-text text-transparent text-center">
-                  {searchTerm ? 'No matches found' : 'Ready to grind?'}
-                </h3>
                 <p className="text-zinc-500 mb-6 lg:mb-8 max-w-sm lg:max-w-md text-center leading-relaxed text-sm lg:text-base px-4">
                   {searchTerm ? 'Try adjusting your search terms or filters' : 'Add some tasks to get started on your productivity journey!'}
                 </p>
