@@ -37,8 +37,6 @@ const App = () => {
   const [aiTaskLoading, setAiTaskLoading] = useState(false);
   const [showAiTaskInput, setShowAiTaskInput] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTasks, setSelectedTasks] = useState(new Set());
-  const [bulkMode, setBulkMode] = useState(false);
   const [filter, setFilter] = useState('all');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
@@ -51,27 +49,6 @@ const App = () => {
   ]);
 
   // Animated background particles
-  const ParticleBackground = () => (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute inset-0">
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-emerald-400/20 rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${i * 0.5}s`,
-              animationDuration: `${3 + Math.random() * 2}s`
-            }}
-          />
-        ))}
-      </div>
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/15 rounded-full blur-3xl animate-pulse-slow"></div>
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-purple-500/15 to-pink-500/15 rounded-full blur-3xl animate-pulse-slow"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
-    </div>
-  );
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
   };
@@ -87,18 +64,18 @@ const App = () => {
     }
   };
   // Enhanced Progress Bar Component
-  const EnhancedProgressBar = ({ percentage, showAnimation }) => (
+  const EnhancedProgressBar = ({ percentage}) => (
     <div className="relative">
       <div className="w-full bg-zinc-800/80 rounded-full h-3 overflow-hidden border border-zinc-700/50 backdrop-blur-sm">
         <div 
-          className={`h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${showAnimation ? 'animate-shimmer' : ''}`}
+          className={`h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
           style={{ width: `${percentage}%` }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-slide-right"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
         </div>
       </div>
       {percentage === 100 && (
-        <div className="absolute -top-1 -right-1 animate-bounce">
+        <div className="absolute -top-1 -right-1">
           <div className="w-5 h-5 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full flex items-center justify-center">
             <Trophy size={12} className="text-white" />
           </div>
@@ -108,7 +85,7 @@ const App = () => {
   );
 
   // Enhanced Task Item Component with drag and drop support
-  const EnhancedTaskItem = ({ task, onToggle, onEdit, onDelete, isSelected, onSelect, bulkMode }) => {
+  const EnhancedTaskItem = ({ task, onToggle, onEdit, onDelete }) => {
     const priorityColors = {
       high: 'from-red-500/20 to-red-600/20 border-red-500/30',
       medium: 'from-amber-500/20 to-orange-500/20 border-amber-500/30',
@@ -123,24 +100,16 @@ const App = () => {
     };
 
     return (
-      <div className={`group relative bg-gradient-to-br from-zinc-900/90 to-zinc-800/90 backdrop-blur-xl rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-zinc-700/50 transition-all duration-300 hover:scale-[1.01] lg:hover:scale-[1.02] hover:shadow-xl lg:hover:shadow-2xl hover:shadow-emerald-500/10 ${task.completed ? 'opacity-75' : 'hover:border-emerald-500/30'} ${isSelected ? 'ring-2 ring-emerald-500/50' : ''}`}>
+      <div className={`group relative bg-gradient-to-br from-zinc-900/90 to-zinc-800/90 backdrop-blur-xl rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-zinc-700/50 transition-all duration-300 hover:shadow-emerald-500/10 ${task.completed ? 'opacity-75' : 'hover:border-emerald-500/30'}`}>
         
         {/* Mobile-friendly priority indicator */}
-        <div className={`absolute -top-1 lg:-top-2 -right-1 lg:-right-2 w-5 h-5 lg:w-6 lg:h-6 rounded-full bg-gradient-to-br ${priorityColors[task.priority]} border backdrop-blur-sm flex items-center justify-center animate-pulse-gentle`}>
+        <div className={`absolute -top-1 lg:-top-2 -right-1 lg:-right-2 w-5 h-5 lg:w-6 lg:h-6 rounded-full bg-gradient-to-br ${priorityColors[task.priority]} border backdrop-blur-sm flex items-center justify-center`}>
           <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-current opacity-80"></div>
         </div>
 
         <div className="flex items-start space-x-3 lg:space-x-4">
           {/* Mobile-optimized checkbox and toggle */}
           <div className="flex flex-col space-y-2 pt-1">
-            {bulkMode && (
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => onSelect(task.id)}
-                className="w-4 h-4 lg:w-5 lg:h-5 rounded-lg border-2 border-zinc-600 bg-zinc-800 checked:bg-emerald-500 checked:border-emerald-500 transition-all"
-              />
-            )}
             
             <div className="relative">
               <button
@@ -154,7 +123,7 @@ const App = () => {
                 )}
               </button>
               {task.completed && (
-                <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
+                <div className="absolute inset-0 rounded-full bg-emerald-500 opacity-75"></div>
               )}
             </div>
           </div>
@@ -163,7 +132,7 @@ const App = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-start lg:items-center flex-col lg:flex-row lg:space-x-3 mb-2 lg:mb-2">
               <div className="flex items-center space-x-2 lg:space-x-3 mb-2 lg:mb-0">
-                <span className="text-lg lg:text-2xl animate-gentle-bounce">{task.icon}</span>
+                <span className="text-lg lg:text-2xl">{task.icon}</span>
                 <h3 className={`font-semibold text-base lg:text-lg ${task.completed ? 'line-through text-zinc-500' : 'text-zinc-100'} transition-all break-words`}>
                   {task.task}
                 </h3>
@@ -212,7 +181,7 @@ const App = () => {
 
   // Enhanced Search Bar
   const EnhancedSearchBar = ({ searchTerm, onSearchChange, onClear }) => (
-    <div className="relative group">
+    <div className="relative group w-full lg:max-w-md">
       <div className="absolute inset-y-0 left-0 pl-3 lg:pl-4 flex items-center pointer-events-none">
         <svg className="h-4 w-4 lg:h-5 lg:w-5 text-zinc-400 group-focus-within:text-emerald-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -223,7 +192,7 @@ const App = () => {
         placeholder="Search tasks..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-full pl-10 lg:pl-12 pr-10 lg:pr-12 py-3 lg:py-4 bg-zinc-900/50 border border-zinc-700/50 rounded-xl lg:rounded-2xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all backdrop-blur-sm text-sm lg:text-base"
+        className="w-full pl-10 lg:pl-10 pr-10 lg:pr-10 py-2.5 lg:py-2 bg-zinc-900/50 border border-zinc-700/50 rounded-xl lg:rounded-2xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all backdrop-blur-sm text-sm lg:text-base"
       />
       {searchTerm && (
         <button
@@ -239,28 +208,25 @@ const App = () => {
   );
 
   // Stats cards with enhanced visuals
-  const StatsCard = ({ icon: Icon, title, value, subtitle, color = "emerald" }) => {
-    const colorClasses = {
-      emerald: "from-emerald-500/20 to-emerald-600/20 border-emerald-500/30 text-emerald-400",
-      amber: "from-amber-500/20 to-amber-600/20 border-amber-500/30 text-amber-400",
-      blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
-      purple: "from-purple-500/20 to-purple-600/20 border-purple-500/30 text-purple-400"
-    };
-
-    return (
-      <div className={`bg-gradient-to-br ${colorClasses[color]} backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:scale-105 hover:shadow-2xl group`}>
-        <div className="flex items-center justify-between mb-3">
-          <Icon size={24} className="group-hover:scale-110 transition-transform" />
-          <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
-        </div>
-        <div className="space-y-1">
-          <p className="text-2xl font-bold text-white">{value}</p>
-          <p className="text-sm font-medium">{title}</p>
-          <p className="text-xs opacity-75">{subtitle}</p>
-        </div>
+  const StatItem = ({ icon: Icon, label, value, color, className = "" }) => (
+    <div
+      className={`
+        flex items-center gap-4
+        px-4 py-2
+        rounded-xl
+        bg-zinc-900/60 border border-zinc-700/50
+        ${className}
+      `}
+    >
+      <Icon size={28} className={color} />
+      <div className="text-md">
+        <div className="text-zinc-400">{label}</div>
+        <div className="font-semibold text-zinc-100">{value}</div>
       </div>
-    );
-  };
+    </div>
+  );
+
+
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -429,13 +395,6 @@ const saveTaskWithCalendar = async (rawTask) => {
     } else {
       setNotificationsEnabled(false);
     }
-  };
-
-  const handleToggleBulkMode = () => {
-    if (bulkMode) {
-      setSelectedTasks(new Set());
-    }
-    setBulkMode(!bulkMode);
   };
 
   const handleSendMessage = async (userInput) => {
@@ -640,16 +599,6 @@ const saveTaskWithCalendar = async (rawTask) => {
     setShowEditModal(true);
   };
 
-  const handleTaskSelect = (taskId) => {
-    const newSelection = new Set(selectedTasks);
-    if (newSelection.has(taskId)) {
-      newSelection.delete(taskId);
-    } else {
-      newSelection.add(taskId);
-    }
-    setSelectedTasks(newSelection);
-  };
-
   const handleAddTask = () => {
     const newTask = {
       id: `task-${Date.now()}`,
@@ -667,66 +616,6 @@ const saveTaskWithCalendar = async (rawTask) => {
 
   const handleSignOut = async () => {
     await auth.signOut();
-  };
-
-  const handleBulkComplete = async () => {
-    if (selectedTasks.size === 0) return;
-    const batch = writeBatch(db);
-    selectedTasks.forEach(taskId => {
-      const taskRef = doc(db, 'users', user.uid, 'tasks', taskId);
-      batch.update(taskRef, { completed: true });
-    });
-    await batch.commit();
-    setTasks(prev => prev.map(task => selectedTasks.has(task.id) ? { ...task, completed: true } : task));
-    setSelectedTasks(new Set());
-  };
-
-  const handleBulkIncomplete = async () => {
-    if (selectedTasks.size === 0) return;
-    const batch = writeBatch(db);
-    selectedTasks.forEach(taskId => {
-      const taskRef = doc(db, 'users', user.uid, 'tasks', taskId);
-      batch.update(taskRef, { completed: false });
-    });
-    await batch.commit();
-    setTasks(prev => prev.map(task => selectedTasks.has(task.id) ? { ...task, completed: false } : task));
-    setSelectedTasks(new Set());
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedTasks.size === 0) return;
-
-    const tasksToDelete = tasks.filter(task => selectedTasks.has(task.id));
-
-    // ⚡ Optimistic UI update
-    setTasks(prev => prev.filter(task => !selectedTasks.has(task.id)));
-    setSelectedTasks(new Set());
-
-    // Prepare Firestore batch
-    const batch = writeBatch(db);
-    tasksToDelete.forEach(task => {
-      const taskRef = doc(db, 'users', user.uid, 'tasks', task.id);
-      batch.delete(taskRef);
-    });
-
-    try {
-      // ✅ Run Firestore batch + Calendar deletions in parallel
-      await Promise.all([
-        batch.commit(),
-        Promise.all(
-          tasksToDelete.map(task =>
-            task.googleEventId
-              ? deleteCalendarEvent(task.googleEventId).catch(err =>
-                  console.error(`Failed to delete event for task ${task.id}:`, err)
-                )
-              : Promise.resolve()
-          )
-        )
-      ]);
-    } catch (err) {
-      console.error("Bulk delete failed:", err);
-      alert("Some tasks may not have been fully deleted.");
-    }
   };
 
   const calculateProgress = useCallback(() => {
@@ -756,7 +645,7 @@ const saveTaskWithCalendar = async (rawTask) => {
         <div className="flex items-center justify-between mb-6">
           <button 
             onClick={() => setSidebarOpen(false)}
-            className="text-3xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-300 bg-clip-text text-transparent animate-gradient hover:scale-105 transition-all duration-300 cursor-pointer"
+            className="text-3xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-300 bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-emerald-300 hover:scale-105 transition-all duration-300 cursor-pointer"
           >
             MyRoutineAI
           </button>
@@ -838,38 +727,6 @@ const saveTaskWithCalendar = async (rawTask) => {
       </div>
 
       {/* Enhanced quote section */}
-      <div className="p-6">
-        <div className="bg-gradient-to-br from-amber-500/10 via-amber-400/10 to-orange-500/10 rounded-3xl p-6 border border-amber-500/20 backdrop-blur-xl relative overflow-hidden">
-          <div className="absolute inset-0">
-            <div className="absolute top-2 right-2 w-20 h-20 bg-amber-400/10 rounded-full blur-xl"></div>
-            <div className="absolute bottom-2 left-2 w-16 h-16 bg-orange-400/10 rounded-full blur-xl"></div>
-          </div>
-          <div className="relative">
-            <div className="flex justify-between items-center mb-4">
-              <span className="flex items-center text-amber-300 font-semibold">
-                <Sparkles size={18} className="mr-2 text-amber-400 animate-pulse" />
-                Daily Inspiration
-              </span>
-              <button 
-                onClick={fetchQuote}
-                className="text-amber-400 hover:text-amber-300 transition-all hover:rotate-180 duration-500 p-1"
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-            <p className="text-amber-200/90 italic leading-relaxed font-medium">
-              "{quote}"
-            </p>
-            <div className="mt-3 flex justify-end">
-              <div className="flex space-x-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={12} className="text-amber-400/60 fill-current" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </>
   );
 
@@ -894,57 +751,7 @@ const saveTaskWithCalendar = async (rawTask) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-zinc-100 relative">
-      <ParticleBackground />
-      
       {/* Custom styles */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.05); }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        @keyframes slide-right {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        @keyframes scale-in {
-          0% { transform: scale(0); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes gentle-bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
-        }
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        @keyframes pulse-gentle {
-          0%, 100% { opacity: 0.8; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.05); }
-        }
-        .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-pulse-slow { animation: pulse-slow 4s ease-in-out infinite; }
-        .animate-shimmer { 
-          background-size: 200% 100%;
-          animation: shimmer 2s infinite;
-        }
-        .animate-slide-right { animation: slide-right 2s infinite; }
-        .animate-scale-in { animation: scale-in 0.3s ease-out; }
-        .animate-gentle-bounce { animation: gentle-bounce 2s ease-in-out infinite; }
-        .animate-gradient { 
-          background-size: 200% 200%;
-          animation: gradient 3s ease-in-out infinite;
-        }
-        .animate-pulse-gentle { animation: pulse-gentle 2s ease-in-out infinite; }
-      `}</style>
 
       <div className="relative flex flex-col lg:flex-row min-h-screen">
         {/* Mobile Header */}
@@ -1081,72 +888,88 @@ const saveTaskWithCalendar = async (rawTask) => {
                 ? 'max-h-0 opacity-0 -mt-2' 
                 : 'max-h-[600px] opacity-100 mt-0'
             }`} style={{ overflow: headerCollapsed ? 'hidden' : 'visible' }}>
-              <div className="px-6 pb-6 pt-0">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-3 lg:gap-4 mb-6">
-                  <div className="col-span-2 sm:col-span-1">
-                    <StatsCard 
-                      icon={Target} 
-                      title="Tasks Today" 
-                      value={tasks.length} 
-                      subtitle="Total scheduled"
-                      color="emerald" 
-                    />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <StatsCard 
-                      icon={Trophy} 
-                      title="Completed" 
-                      value={tasks.filter(t => t.completed).length} 
-                      subtitle="Tasks finished"
-                      color="amber" 
-                    />
-                  </div>
-                  <StatsCard 
-                    icon={Clock} 
-                    title="Progress" 
-                    value={`${progress}%`} 
-                    subtitle="Daily completion"
-                    color="blue" 
-                  />
-                  <StatsCard 
-                    icon={Flame} 
-                    title="Streak" 
-                    value={streak} 
-                    subtitle="Days active"
-                    color="purple" 
-                  />
-                </div>
-                   
-                  {/* Action buttons */}
-                  <div className="flex gap-2 mb-6">
-                    <button 
-                      onClick={handleAddTask} 
-                      className="flex-1 sm:flex-none px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl lg:rounded-2xl transition-all shadow-lg shadow-emerald-900/50 font-semibold text-sm" 
-                    >
-                      <Plus size={18} className="inline mr-2" />
-                      Add Task
-                    </button>
-                    <button 
-                      onClick={handleToggleBulkMode} 
-                      className={`flex-1 sm:flex-none px-4 py-3 rounded-xl lg:rounded-2xl text-sm font-semibold transition-all duration-300 ${
-                        bulkMode 
-                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/50' 
-                          : 'bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50 border border-zinc-600/50'
-                      }`}
-                    >
-                      {bulkMode ? 'Exit Bulk' : 'Bulk'}
-                    </button>
-                  </div>
-                
+            <div className="px-6 pb-6 pt-0">
 
-                {/* Enhanced Search */}
-                <EnhancedSearchBar 
-                  searchTerm={searchTerm} 
-                  onSearchChange={setSearchTerm} 
-                  onClear={() => setSearchTerm('')} 
+              {/* Stats Grid */}
+              <div
+                className="
+                  grid
+                  grid-cols-2
+                  gap-3
+                  mb-4
+                  lg:flex
+                  lg:flex wrap
+                  lg:gap-3
+                  sm:grid-cols-4
+                "
+              >
+                <StatItem
+                  icon={Target}
+                  label="Tasks"
+                  value={tasks.length}
+                  color="text-emerald-400"
+                  className="lg:w-[160px]"
+                />
+
+                <StatItem
+                  icon={Trophy}
+                  label="Completed"
+                  value={tasks.filter(t => t.completed).length}
+                  color="text-amber-400"
+                  className="lg:w-[160px]"
+                />
+
+                <StatItem
+                  icon={Clock}
+                  label="Progress"
+                  value={`${progress}%`}
+                  color="text-blue-400"
+                  className="lg:w-[160px]"
+                />
+
+                <StatItem
+                  icon={Flame}
+                  label="Streak"
+                  value={streak}
+                  color="text-purple-400"
+                  className="lg:w-[160px]"
                 />
               </div>
+
+              {/* Actions Row */}
+              <div
+                className="flex items-center gap-2 sm:gap-3"
+              >
+                <button
+                  onClick={handleAddTask}
+                  className="
+                    shrink-0
+                    px-3 py-2
+                    sm:px-4 sm:py-2.5
+                    text-sm font-semibold
+                    rounded-xl
+                    bg-emerald-600 hover:bg-emerald-500
+                    transition-all
+                    whitespace-nowrap
+                  "
+                >
+                  <span className="sm:hidden">+</span>
+                  <span className="hidden sm:inline">Add Task</span>
+
+                </button>
+
+                {/* Search (kept close, not pushed away) */}
+                <div className="flex-1 max-w-full sm:max-w-sm lg:max-w-md">
+                  <EnhancedSearchBar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    onClear={() => setSearchTerm('')}
+                  />
+                </div>
+              </div>
+
+            </div>
+
             </div>
             <div className={`px-6 transition-all duration-300 ${headerCollapsed ? 'pb-6 pt-2' : 'pb-6'}`}>
               <div className="flex gap-2 overflow-x-auto">
@@ -1172,48 +995,12 @@ const saveTaskWithCalendar = async (rawTask) => {
 
           {/* Tasks List */}
           <div className="flex-1 overflow-y-auto overscroll-bounce p-3 lg:p-6 min-h-0">
-            {/* Bulk Actions - mobile optimized */}
-            {bulkMode && selectedTasks.size > 0 && (
-              <div className="mb-4 lg:mb-6 p-3 lg:p-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 border border-emerald-500/30 rounded-xl lg:rounded-2xl backdrop-blur-sm">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 lg:gap-0">
-                  <span className="text-emerald-400 font-semibold text-sm lg:text-base">
-                    {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
-                  </span>
-                  <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                    <button 
-                      onClick={handleBulkComplete}
-                      className="flex-1 lg:flex-none px-3 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition-all font-medium text-sm"
-                    >
-                      Complete
-                    </button>
-                    <button 
-                      onClick={handleBulkIncomplete}
-                      className="flex-1 lg:flex-none px-3 py-2 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-all font-medium text-sm"
-                    >
-                      Pending
-                    </button>
-                    <button 
-                      onClick={handleBulkDelete}
-                      className="flex-1 lg:flex-none px-3 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all font-medium text-sm"
-                    >
-                      Delete
-                    </button>
-                    <button 
-                      onClick={() => setSelectedTasks(new Set())}
-                      className="px-3 py-2 bg-zinc-500/20 text-zinc-400 rounded-lg hover:bg-zinc-500/30 transition-all font-medium text-sm"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Tasks Grid - mobile spacing */}
             {filteredTasks.length === 0 ? (
               <div className="text-center text-zinc-400 py-25 lg:py-20 flex flex-col items-center justify-center h-full px-4">
                 <div className="relative mb-6 lg:mb-8">
-                  <div className="text-6xl lg:text-8xl animate-gentle-bounce">🎯</div>
+                  <div className="text-5xl lg:text-6xl opacity-80">🎯</div>
                   <div className="absolute -top-1 lg:-top-2 -right-1 lg:-right-2 w-5 h-5 lg:w-6 lg:h-6 bg-emerald-500 rounded-full animate-pulse"></div>
                 </div>
                 <p className="text-zinc-500 mb-6 lg:mb-8 max-w-sm lg:max-w-md text-center leading-relaxed text-sm lg:text-base px-4">
@@ -1246,9 +1033,6 @@ const saveTaskWithCalendar = async (rawTask) => {
                         onToggle={handleTaskToggle} 
                         onEdit={handleTaskEdit} 
                         onDelete={() => handleTaskDelete(task.id)}
-                        isSelected={selectedTasks.has(task.id)} 
-                        onSelect={handleTaskSelect} 
-                        bulkMode={bulkMode} 
                       />
                     ))}
                   </div>
@@ -1297,7 +1081,6 @@ const saveTaskWithCalendar = async (rawTask) => {
             title={showCalendar ? "Hide Calendar" : "Show Calendar"}
           >
             <Calendar size={20} className="lg:w-5 lg:h-5 group-hover:scale-110 transition-transform" />
-            <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20"></div>
           </button>
           
           {/* Google Calendar Card - positioned to avoid cutoff */}
@@ -1340,7 +1123,7 @@ const saveTaskWithCalendar = async (rawTask) => {
             title={showAiTaskInput ? "Hide AI Task Creator" : "Show AI Task Creator"}
           >
             <Sparkles size={20} className="lg:w-5 lg:h-5 group-hover:scale-110 transition-transform" />
-            <div className="absolute inset-0 rounded-full bg-amber-500 animate-ping opacity-20"></div>
+            <div className="absolute inset-0 rounded-full bg-amber-500 opacity-20"></div>
           </button>
 
           {/* AI Task Creator Card - positioned to avoid cutoff */}
@@ -1364,7 +1147,6 @@ const saveTaskWithCalendar = async (rawTask) => {
             title="Open AI Assistant"
           >
             <MessageSquarePlus size={20} className="lg:w-5 lg:h-5 group-hover:scale-110 transition-transform" />
-            <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20"></div>
           </button>
         </div>
       </div>
